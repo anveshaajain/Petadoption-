@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Share a Care Tip - PetLink{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="max-width: 800px; margin: 0 auto;">
+        <div style="margin-bottom: 2rem;">
+            <a href="{{ url_for('care_list') }}" class="btn btn-outline">
+                <i class="fas fa-arrow-left"></i>
+                Back to Care Tips
+            </a>
+        </div>
+
+        <div class="card">
+            <h1 style="font-size: 2rem; margin-bottom: 0.5rem;">📝 Share a Pet Care Tip</h1>
+            <p class="text-muted" style="margin-bottom: 2rem;">
+                Help other pet owners by sharing your knowledge and experiences
+            </p>
+
+            <form method="POST">
+                <div class="form-group">
+                    <label for="title" class="form-label">
+                        <i class="fas fa-heading"></i>
+                        Title
+                    </label>
+                    <input type="text" 
+                           id="title" 
+                           name="title" 
+                           class="form-input" 
+                           placeholder="e.g., How to Train Your Puppy in 5 Easy Steps"
+                           required
+                           maxlength="200">
+                    <small class="text-muted">Choose a clear, descriptive title for your tip</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="content" class="form-label">
+                        <i class="fas fa-align-left"></i>
+                        Content
+                    </label>
+                    <textarea id="content" 
+                              name="content" 
+                              class="form-input form-textarea" 
+                              rows="12"
+                              placeholder="Share your pet care advice, tips, experiences, or helpful information here. Be detailed and helpful!"
+                              required></textarea>
+                    <small class="text-muted">Provide detailed information that will help other pet owners</small>
+                </div>
+
+                <div class="flex gap-4">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i>
+                        Publish Tip
+                    </button>
+                    <a href="{{ url_for('care_list') }}" class="btn btn-outline">
+                        <i class="fas fa-times"></i>
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="card" style="margin-top: 2rem; background-color: #dbeafe; border-color: #93c5fd;">
+            <h3 style="margin-bottom: 1rem; color: #1e40af; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-lightbulb"></i>
+                Tips for Writing Great Care Tips
+            </h3>
+            <ul style="color: #1e40af; padding-left: 1.5rem; margin: 0;">
+                <li>Be specific and detailed in your advice</li>
+                <li>Share personal experiences when relevant</li>
+                <li>Include step-by-step instructions when applicable</li>
+                <li>Mention any safety considerations or warnings</li>
+                <li>Use clear, easy-to-understand language</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

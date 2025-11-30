@@ -1,0 +1,93 @@
+<div class="search-container">
+    <div class="search-input-wrapper">
+        <input type="text" 
+               id="searchInput" 
+               class="search-input" 
+               placeholder="Search pets..." 
+               autocomplete="off">
+        <i class="fas fa-search search-icon"></i>
+        <div id="searchResults" class="search-results"></div>
+    </div>
+    <select id="searchStatus" class="search-status-select">
+        <option value="all">All</option>
+        <option value="available">Available</option>
+        <option value="adopted">Adopted</option>
+        <option value="pending">Pending</option>
+    </select>
+</div>
+
+<script>
+    let searchTimeout;
+    const searchInput = document.getElementById('searchInput');
+    const searchStatus = document.getElementById('searchStatus');
+    const searchResults = document.getElementById('searchResults');
+
+    function performSearch() {
+        const query = searchInput.value.trim();
+        const status = searchStatus.value;
+        
+        if (query.length === 0 && status === 'all') {
+            searchResults.classList.remove('show');
+            return;
+        }
+
+        fetch(`/search_pets?q=${encodeURIComponent(query)}&status=${encodeURIComponent(status)}`)
+            .then(response => response.json())
+            .then(data => {
+                displaySearchResults(data);
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+            });
+    }
+
+    function displaySearchResults(pets) {
+        if (pets.length === 0) {
+            searchResults.innerHTML = '<div class="search-result-item" style="cursor: default; color: var(--text-muted);">No pets found</div>';
+            searchResults.classList.add('show');
+            return;
+        }
+
+        searchResults.innerHTML = pets.map(pet => `
+            <div class="search-result-item" onclick="window.location.href='/pet/${pet.id}'">
+                <img src="${pet.image_url || 'https://via.placeholder.com/60'}" 
+                     alt="${pet.name}" 
+                     class="search-result-image"
+                     onerror="this.src='https://via.placeholder.com/60'">
+                <div class="search-result-info">
+                    <div class="search-result-name">${pet.name}</div>
+                    <div class="search-result-details">
+                        ${pet.category_name} • ${pet.breed} • ${pet.age} years • 
+                        <span class="status-badge status-${pet.adoption_status}">${pet.adoption_status}</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+        searchResults.classList.add('show');
+    }
+
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(performSearch, 300);
+    });
+
+    searchStatus.addEventListener('change', performSearch);
+
+    // Close search results when clicking outside
+    document.addEventListener('click', function(event) {
+        if (!event.target.closest('.search-container')) {
+            searchResults.classList.remove('show');
+        }
+    });
+
+    // Handle Enter key to navigate to first result
+    searchInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') {
+            const firstResult = searchResults.querySelector('.search-result-item');
+            if (firstResult && !firstResult.style.cursor.includes('default')) {
+                firstResult.click();
+            }
+        }
+    });
+</script>
+

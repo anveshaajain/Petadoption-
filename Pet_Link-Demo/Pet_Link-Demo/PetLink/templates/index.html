@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero">
+    <div class="container">
+        <h1>🐾 Welcome to PetLink</h1>
+        <p>Find your perfect companion and give a loving home to pets in need</p>
+        <a href="{{ url_for('adopt') }}" class="btn btn-secondary">
+            <i class="fas fa-heart"></i>
+            Start Adopting
+        </a>
+    </div>
+</div>
+
+<div class="container">
+    <div class="text-center mb-8">
+        <h2 style="font-size: 2rem; margin-bottom: 1rem;">Featured Pets</h2>
+        <p class="text-muted">Meet some of our adorable pets looking for their forever homes</p>
+    </div>
+
+    {% if pets %}
+        <div class="grid grid-3">
+            {% for pet in pets %}
+                <div class="pet-card">
+                    <a href="{{ url_for('pet_detail', pet_id=pet.id) }}" style="text-decoration: none; color: inherit;">
+                        <img src="{{ pet.image_url }}" alt="{{ pet.name }}" class="pet-image">
+                    </a>
+                    <div class="pet-info">
+                        <a href="{{ url_for('pet_detail', pet_id=pet.id) }}" style="text-decoration: none; color: inherit;">
+                            <div class="pet-name">{{ pet.name }}</div>
+                        </a>
+                        <div class="pet-details">
+                            <p><strong>{{ pet.category_name }}</strong> • {{ pet.breed }} • {{ pet.age }} years old</p>
+                            <p class="text-muted">{{ pet.health_details }}</p>
+                        </div>
+                        <div class="flex-between" style="align-items: center; gap: 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span class="status-badge status-{{ pet.adoption_status }}" style="font-size: 0.7rem; padding: 0.25rem 0.5rem;">
+                                    {{ pet.adoption_status.title() }}
+                                </span>
+                                {% if session.user_id and session.user_type == 'user' %}
+                                    <button class="like-btn {{ 'liked' if pet.is_liked else '' }}" 
+                                            onclick="event.stopPropagation(); toggleLike({{ pet.id }}, this)"
+                                            data-pet-id="{{ pet.id }}">
+                                        <i class="fas fa-heart"></i>
+                                        <span class="like-count">{{ pet.like_count or 0 }}</span>
+                                    </button>
+                                {% else %}
+                                    <span style="font-size: 0.75rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.3rem;">
+                                        <i class="fas fa-heart"></i>
+                                        {{ pet.like_count or 0 }}
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                                <a href="{{ url_for('pet_detail', pet_id=pet.id) }}" class="btn btn-outline btn-xs" style="text-decoration: none;" onclick="event.stopPropagation();">
+                                    <i class="fas fa-eye"></i>
+                                    View
+                                </a>
+                                {% if session.user_id and session.user_type == 'user' and pet.adoption_status == 'available' %}
+                                    <button class="btn btn-primary btn-xs adopt-btn" 
+                                            data-pet-id="{{ pet.id }}" 
+                                            data-pet-name="{{ pet.name }}"
+                                            onclick="event.stopPropagation(); requestAdoptionDirect({{ pet.id }}, this)">
+                                        <i class="fas fa-heart"></i>
+                                        Adopt
+                                    </button>
+                                {% elif not session.user_id %}
+                                    <a href="{{ url_for('login') }}" class="btn btn-outline btn-xs" onclick="event.stopPropagation();">
+                                        <i class="fas fa-sign-in-alt"></i>
+                                        Login
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('adopt') }}" class="btn btn-primary">
+                <i class="fas fa-paw"></i>
+                View All Pets
+            </a>
+        </div>
+    {% else %}
+        <div class="text-center">
+            <i class="fas fa-paw" style="font-size: 4rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+            <h3>No pets available at the moment</h3>
+            <p class="text-muted">Check back soon for new arrivals!</p>
+        </div>
+    {% endif %}
+
+    <!-- Features Section -->
+    <div style="margin-top: 4rem;">
+        <div class="text-center mb-8">
+            <h2 style="font-size: 2rem; margin-bottom: 1rem;">Why Choose PetLink?</h2>
+            <p class="text-muted">We make pet adoption simple, safe, and rewarding</p>
+        </div>
+
+        <div class="grid grid-3">
+            <div class="card text-center">
+                <i class="fas fa-heart" style="font-size: 3rem; color: var(--primary-color); margin-bottom: 1rem;"></i>
+                <h3>Find Your Perfect Match</h3>
+                <p class="text-muted">Browse through our carefully curated selection of pets and find the one that matches your lifestyle.</p>
+            </div>
+            <div class="card text-center">
+                <i class="fas fa-shield-alt" style="font-size: 3rem; color: var(--secondary-color); margin-bottom: 1rem;"></i>
+                <h3>Safe & Secure</h3>
+                <p class="text-muted">All our pets are health-checked and come with complete medical records for your peace of mind.</p>
+            </div>
+            <div class="card text-center">
+                <i class="fas fa-users" style="font-size: 3rem; color: var(--warning-color); margin-bottom: 1rem;"></i>
+                <h3>Ongoing Support</h3>
+                <p class="text-muted">Our team provides continuous support to ensure successful adoptions and happy families.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Adoption Request Modal -->
+<div id="adoptionModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 class="modal-title">Request Adoption</h3>
+            <button class="close-btn" onclick="closeModal('adoptionModal')">&times;</button>
+        </div>
+        <div id="adoptionForm">
+            <p>You're about to request adoption for <strong id="petName"></strong>.</p>
+            <div class="form-group">
+                <label class="form-label">Tell us why you'd like to adopt this pet:</label>
+                <textarea id="adoptionMessage" class="form-input form-textarea" placeholder="Share your experience with pets, living situation, and why you think this pet would be a great fit for your family..."></textarea>
+            </div>
+            <div class="flex gap-4">
+                <button class="btn btn-primary" onclick="submitAdoptionRequest()">
+                    <i class="fas fa-heart"></i>
+                    Submit Request
+                </button>
+                <button class="btn btn-outline" onclick="closeModal('adoptionModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let currentPetId = null;
+
+    async function requestAdoptionDirect(petId, button) {
+        // Disable button and show loading
+        button.disabled = true;
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        
+        try {
+            const result = await apiCall(`/request-adoption/${petId}`, 'POST', {});
+            
+            if (result.success) {
+                // Change button to green with success message
+                button.classList.remove('btn-primary');
+                button.classList.add('btn-secondary');
+                button.style.backgroundColor = '#10b981';
+                button.style.borderColor = '#10b981';
+                button.innerHTML = '<i class="fas fa-check-circle"></i> Request sent successfully to owner';
+                button.disabled = true;
+                
+                showNotification(result.message, 'success');
+            } else {
+                // Restore button on error
+                button.disabled = false;
+                button.innerHTML = originalHTML;
+                showNotification(result.message, 'error');
+            }
+        } catch (error) {
+            // Restore button on error
+            button.disabled = false;
+            button.innerHTML = originalHTML;
+            showNotification('Error sending request. Please try again.', 'error');
+        }
+    }
+
+    async function toggleLike(petId, button) {
+        const result = await apiCall(`/like-pet/${petId}`, 'POST');
+        
+        if (result.success) {
+            const likeCount = button.querySelector('.like-count');
+            if (likeCount) {
+                likeCount.textContent = result.like_count;
+            }
+            
+            if (result.action === 'liked') {
+                button.classList.add('liked');
+            } else {
+                button.classList.remove('liked');
+            }
+        } else {
+            showNotification(result.message, 'error');
+        }
+    }
+</script>
+{% endblock %}

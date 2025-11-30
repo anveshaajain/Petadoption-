@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}{{ post.title }} - Care Tips - PetLink{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div style="max-width: 900px; margin: 0 auto;">
+        <div style="margin-bottom: 2rem;">
+            <a href="{{ url_for('care_list') }}" class="btn btn-outline">
+                <i class="fas fa-arrow-left"></i>
+                Back to Care Tips
+            </a>
+        </div>
+
+        <!-- Post Content -->
+        <div class="card" style="margin-bottom: 2rem;">
+            <div class="flex-between mb-4">
+                <h1 style="font-size: 2.5rem; margin: 0;">{{ post.title }}</h1>
+                <span class="text-muted" style="font-size: 0.875rem;">
+                    <i class="fas fa-calendar"></i>
+                    {{ post.created_at.split(' ')[0] if post.created_at else 'N/A' }}
+                </span>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background-color: var(--bg-color); border-radius: 0.5rem; border-left: 3px solid var(--primary-color);">
+                <p style="margin: 0; color: var(--text-muted); font-size: 0.95rem;">
+                    <i class="fas fa-user"></i>
+                    By <strong>{{ post.author_name }}</strong>
+                </p>
+            </div>
+            
+            <div style="color: var(--text-color); line-height: 1.8; white-space: pre-wrap; font-size: 1.05rem; margin-bottom: 2rem;">{{ post.content }}</div>
+        </div>
+
+        <!-- Comments Section -->
+        <div class="card">
+            <h2 style="font-size: 1.75rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-comments"></i>
+                Comments
+                <span style="font-size: 1rem; color: var(--text-muted); font-weight: normal;">
+                    ({{ comments|length }})
+                </span>
+            </h2>
+
+            <!-- Comment Form -->
+            {% if session.user_id and session.user_type == 'user' %}
+                <div style="margin-bottom: 2rem; padding: 1.5rem; background-color: var(--bg-color); border-radius: 0.5rem; border: 1px solid var(--border-color);">
+                    <h3 style="margin-bottom: 1rem; font-size: 1.1rem;">Add a Comment</h3>
+                    <form id="commentForm">
+                        <div class="form-group">
+                            <textarea id="commentContent" 
+                                      class="form-input form-textarea" 
+                                      rows="4"
+                                      placeholder="Share your thoughts, ask questions, or provide additional tips..."
+                                      required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i>
+                            Post Comment
+                        </button>
+                    </form>
+                </div>
+            {% else %}
+                <div style="margin-bottom: 2rem; padding: 1rem; background-color: var(--bg-color); border-radius: 0.5rem; border-left: 3px solid var(--primary-color); text-align: center;">
+                    <p style="margin: 0; color: var(--text-muted);">
+                        <a href="{{ url_for('login') }}" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">
+                            Login
+                        </a> to join the discussion and leave a comment
+                    </p>
+                </div>
+            {% endif %}
+
+            <!-- Comments List -->
+            <div id="commentsList">
+                {% if comments %}
+                    {% for comment in comments %}
+                        <div class="comment-item" data-comment-id="{{ comment.id }}">
+                            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                                        <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                            {{ comment.author_name[0].upper() }}
+                                        </div>
+                                        <div>
+                                            <strong style="color: var(--text-color);">{{ comment.author_name }}</strong>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                                <i class="fas fa-clock"></i>
+                                                {{ comment.created_at.split(' ')[0] if comment.created_at else 'N/A' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="color: var(--text-color); line-height: 1.6; white-space: pre-wrap; padding-left: 3.25rem;">
+                                        {{ comment.content }}
+                                    </div>
+                                </div>
+                            </div>
+                            {% if not loop.last %}
+                                <hr style="border: none; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                        <i class="fas fa-comment-slash" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>No comments yet. Be the first to share your thoughts!</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const commentForm = document.getElementById('commentForm');
+    const commentContent = document.getElementById('commentContent');
+    const commentsList = document.getElementById('commentsList');
+    const postId = {{ post.id }};
+
+    if (commentForm) {
+        commentForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const content = commentContent.value.trim();
+            
+            if (!content) {
+                showNotification('Please enter a comment!', 'error');
+                return;
+            }
+
+            // Disable form
+            const submitBtn = commentForm.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+            submitBtn.disabled = true;
+
+            try {
+                const result = await apiCall(`/care/${postId}/comment`, 'POST', { content });
+                
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    commentContent.value = '';
+                    
+                    // Add new comment to the list
+                    const commentHtml = `
+                        <div class="comment-item">
+                            <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
+                                <div style="flex: 1;">
+                                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                                        <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                                            ${result.author_name[0].toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <strong style="color: var(--text-color);">${result.author_name}</strong>
+                                            <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                                <i class="fas fa-clock"></i> Just now
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style="color: var(--text-color); line-height: 1.6; white-space: pre-wrap; padding-left: 3.25rem;">
+                                        ${content.replace(/\n/g, '<br>')}
+                                    </div>
+                                </div>
+                            </div>
+                            <hr style="border: none; border-top: 1px solid var(--border-color); margin: 1.5rem 0;">
+                        </div>
+                    `;
+                    
+                    // Remove "no comments" message if exists
+                    const noCommentsMsg = commentsList.querySelector('div[style*="text-align: center"]');
+                    if (noCommentsMsg) {
+                        noCommentsMsg.remove();
+                    }
+                    
+                    // Add new comment at the end
+                    commentsList.insertAdjacentHTML('beforeend', commentHtml);
+                    
+                    // Update comment count
+                    const commentCount = document.querySelector('h2 span');
+                    if (commentCount) {
+                        const currentCount = parseInt(commentCount.textContent.match(/\d+/)[0]) || 0;
+                        commentCount.textContent = `(${currentCount + 1})`;
+                    }
+                } else {
+                    showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                showNotification('Error posting comment. Please try again.', 'error');
+            } finally {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+    }
+</script>
+{% endblock %}
+
